@@ -1,0 +1,10 @@
+{{- /*
+CRDs intentionally rendered as a template (rather than placed under crds/)
+so they participate in Helm upgrades. Production setups can move these to
+the chart's crds/ directory if install-once semantics are preferred.
+*/ -}}
+{{- $crds := .Files.Glob "crds/*.yaml" }}
+{{- range $path, $bytes := $crds }}
+---
+{{ $.Files.Get $path }}
+{{- end }}

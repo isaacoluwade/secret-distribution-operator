@@ -1,0 +1,69 @@
+# Default values for secret-distribution-operator.
+
+# Container image of the operator. Override `image.tag` per release.
+image:
+  repository: ghcr.io/example/secret-distribution-operator
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Number of manager replicas. Leader election picks one active at a time.
+replicaCount: 2
+
+# ServiceAccount with the IRSA annotation pointing at the IAM role granted
+# secretsmanager:* on platform/<env>/<ns>/<name> paths.
+serviceAccount:
+  create: true
+  name: secret-distribution-operator
+  # The IRSA role ARN MUST be set per cluster. Example:
+  #   annotations:
+  #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/sdo-prod
+  annotations: {}
+
+# AWS region the controller uses. Falls back to AWS_REGION env if empty.
+aws:
+  region: ""
+
+# Leader election toggle. Always on in production.
+leaderElection:
+  enabled: true
+
+# Pod resources. Tuned for the typical low-throughput operator workload.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Pod security defaults aligned with the restricted PSS profile.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# Standard scheduling knobs.
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Metrics service + optional Prometheus Operator ServiceMonitor.
+metrics:
+  enabled: true
+  port: 8080
+  service:
+    type: ClusterIP
+    port: 8080
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}

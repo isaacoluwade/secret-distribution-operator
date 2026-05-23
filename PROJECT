@@ -1,0 +1,25 @@
+domain: mtkp.platform
+layout:
+- go.kubebuilder.io/v4
+projectName: secret-distribution-operator
+repo: github.com/example/secret-distribution-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: mtkp.platform
+  group: secrets
+  kind: ExportSecret
+  path: github.com/example/secret-distribution-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: mtkp.platform
+  group: secrets
+  kind: ImportSecret
+  path: github.com/example/secret-distribution-operator/api/v1alpha1
+  version: v1alpha1
+version: "3"

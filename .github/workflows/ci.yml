@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+      - name: Verify generated files are up-to-date
+        run: |
+          make manifests generate
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Generated files are out of date. Run 'make manifests generate' locally and commit."
+            git diff
+            exit 1
+          fi
+      - name: Lint
+        run: make fmt vet
+      - name: Unit tests
+        run: go test ./... -coverprofile=cover.out
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: cover.out
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (no push on CI)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: secret-distribution-operator:${{ github.sha }}

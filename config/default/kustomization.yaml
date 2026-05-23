@@ -1,0 +1,7 @@
+namespace: secret-distribution-operator
+namePrefix: ""
+
+resources:
+  - ../crd
+  - ../rbac
+  - ../manager

@@ -1,0 +1,9 @@
+bin/
+cover.out
+*.tgz
+.vscode/
+.idea/
+*.swp
+.DS_Store
+# Internal review artifacts (pre-cert findings)
+REVIEW.md

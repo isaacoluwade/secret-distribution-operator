@@ -1,0 +1,12 @@
+apiVersion: v2
+name: secret-distribution-operator
+description: Operator that synchronizes Kubernetes Secrets with AWS Secrets Manager under platform path policy.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - secrets
+  - aws
+  - secrets-manager
+  - eso
+home: https://github.com/example/secret-distribution-operator

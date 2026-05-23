@@ -1,0 +1,3 @@
+resources:
+  - bases/secrets.mtkp.platform_exportsecrets.yaml
+  - bases/secrets.mtkp.platform_importsecrets.yaml

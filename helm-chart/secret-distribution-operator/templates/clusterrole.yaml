@@ -1,0 +1,40 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "sdo.fullname" . }}
+  labels:
+    {{- include "sdo.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["secrets.mtkp.platform"]
+    resources: [exportsecrets, importsecrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["secrets.mtkp.platform"]
+    resources: [exportsecrets/status, importsecrets/status]
+    verbs: [get, update, patch]
+  - apiGroups: ["secrets.mtkp.platform"]
+    resources: [exportsecrets/finalizers, importsecrets/finalizers]
+    verbs: [update]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "sdo.fullname" . }}
+  labels:
+    {{- include "sdo.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "sdo.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "sdo.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
