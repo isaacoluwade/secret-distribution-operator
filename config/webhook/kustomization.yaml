@@ -1,0 +1,5 @@
+# Kustomize wrapper for the validating-webhook manifest plus the Service the
+# apiserver dials. Pulled into config/default/ via resources:.
+resources:
+  - manifests.yaml
+  - service.yaml

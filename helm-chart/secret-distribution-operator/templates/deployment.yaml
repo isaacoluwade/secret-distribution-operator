@@ -26,6 +26,10 @@ spec:
             - --leader-elect={{ .Values.leaderElection.enabled }}
             - --metrics-bind-address=:{{ .Values.metrics.port }}
             - --health-probe-bind-address=:8081
+            {{- if .Values.webhook.enabled }}
+            - --webhook-port={{ .Values.webhook.port }}
+            - --webhook-cert-dir={{ .Values.webhook.certDir }}
+            {{- end }}
             {{- if .Values.aws.region }}
             - --aws-region={{ .Values.aws.region }}
             {{- end }}
@@ -39,6 +43,11 @@ spec:
               containerPort: {{ .Values.metrics.port }}
             - name: probes
               containerPort: 8081
+            {{- if .Values.webhook.enabled }}
+            - name: webhook
+              containerPort: {{ .Values.webhook.port }}
+              protocol: TCP
+            {{- end }}
           livenessProbe:
             httpGet: { path: /healthz, port: probes }
             initialDelaySeconds: 15
@@ -51,6 +60,22 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          {{- if .Values.webhook.enabled }}
+          volumeMounts:
+            # readOnly so the manager pod, which runs with readOnlyRootFilesystem,
+            # never tries to write to the cert directory.
+            - name: webhook-cert
+              mountPath: {{ .Values.webhook.certDir }}
+              readOnly: true
+          {{- end }}
+      {{- if .Values.webhook.enabled }}
+      volumes:
+        - name: webhook-cert
+          secret:
+            # Matches the secretName in the cert-manager Certificate.
+            secretName: {{ include "sdo.fullname" . }}-webhook-cert
+            defaultMode: 0444
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	webhookserver "sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	secretsv1alpha1 "github.com/example/secret-distribution-operator/api/v1alpha1"
 	"github.com/example/secret-distribution-operator/internal/controller"
@@ -36,6 +37,8 @@ func main() {
 		probeAddr            string
 		enableLeaderElection bool
 		awsRegion            string
+		webhookPort          int
+		webhookCertDir       string
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -43,6 +46,11 @@ func main() {
 		"Enable leader election for controller manager.")
 	flag.StringVar(&awsRegion, "aws-region", os.Getenv("AWS_REGION"),
 		"AWS region to use for Secrets Manager. Defaults to $AWS_REGION.")
+	// Webhook server: 9443 is the controller-runtime convention; cert-manager
+	// drops the TLS material at the default CertDir below.
+	flag.IntVar(&webhookPort, "webhook-port", 9443, "Port for the validating-admission webhook server.")
+	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "/tmp/k8s-webhook-server/serving-certs",
+		"Directory holding tls.crt/tls.key for the webhook server (mounted by cert-manager).")
 	opts := zap.Options{Development: false}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -71,6 +79,13 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "secret-distribution-operator.platform.mtkp",
+		// WebhookServer hosts the ValidatingAdmissionWebhooks registered
+		// just below. Certs are reloaded from disk so cert-manager rotation
+		// does not require a restart.
+		WebhookServer: webhookserver.NewServer(webhookserver.Options{
+			Port:    webhookPort,
+			CertDir: webhookCertDir,
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to create manager")
@@ -92,6 +107,18 @@ func main() {
 		SecretsManager: smWrapper,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ImportSecret")
+		os.Exit(1)
+	}
+
+	// Register the ValidatingAdmissionWebhooks. Both share the manager's
+	// webhook server configured above; the paths come from the
+	// kubebuilder:webhook markers on each validator.
+	if err := secretsv1alpha1.SetupExportSecretWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ExportSecret")
+		os.Exit(1)
+	}
+	if err := secretsv1alpha1.SetupImportSecretWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ImportSecret")
 		os.Exit(1)
 	}
 

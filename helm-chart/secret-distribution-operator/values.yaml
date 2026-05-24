@@ -67,3 +67,37 @@ metrics:
     interval: 30s
     scrapeTimeout: 10s
     labels: {}
+
+# ValidatingAdmissionWebhooks for ExportSecret and ImportSecret. They reject
+# resources at admission time that would otherwise be denied during Reconcile
+# (cross-tenant paths, bad ARNs, malformed durations) — the controller still
+# re-checks defensively, but the webhook is the user-facing failure surface.
+#
+# Disable only for emergency break-glass: turning the webhook off leaves the
+# CRDs unguarded against bad specs landing in etcd.
+webhook:
+  enabled: true
+  # Port the manager binds the webhook server on. The Service routes
+  # apiserver traffic from 443 → this port.
+  port: 9443
+  # Directory the cert-manager-provisioned tls.crt/tls.key are mounted at.
+  certDir: /tmp/k8s-webhook-server/serving-certs
+  # Service the apiserver dials. Name is templated; this just controls the
+  # port the Service publishes.
+  service:
+    port: 443
+  # cert-manager Issuer + Certificate generation. If you have a cluster-wide
+  # Issuer, set issuerRef and disable selfSigned.
+  certManager:
+    enabled: true
+    # If true, create a self-signed Issuer in the release namespace and use
+    # it for the serving Certificate.
+    selfSigned: true
+    # If selfSigned is false, the Certificate references this Issuer.
+    issuerRef:
+      kind: ClusterIssuer
+      name: ""
+  # failurePolicy: Fail blocks admission when the webhook is unreachable.
+  # Ignore would silently regress policy — not a tradeoff we want by default.
+  failurePolicy: Fail
+  timeoutSeconds: 10

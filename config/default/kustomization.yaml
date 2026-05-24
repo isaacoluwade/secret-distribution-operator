@@ -5,3 +5,21 @@ resources:
   - ../crd
   - ../rbac
   - ../manager
+  - ../webhook
+  - ../certmanager
+
+# cert-manager.io/inject-ca-from tells cert-manager to copy the generated CA
+# bundle from the named Certificate into the ValidatingWebhookConfiguration's
+# clientConfig.caBundle field, so the apiserver can verify the webhook
+# server's TLS cert.
+patches:
+  - target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingWebhookConfiguration
+      name: secret-distribution-operator-validating-webhook
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          cert-manager.io/inject-ca-from: secret-distribution-operator/secret-distribution-operator-serving-cert

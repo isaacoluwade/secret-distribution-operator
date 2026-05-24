@@ -1,0 +1,15 @@
+# The apiserver dials this Service to reach the webhook server inside the
+# manager pod. targetPort matches --webhook-port in cmd/main.go (9443).
+apiVersion: v1
+kind: Service
+metadata:
+  name: secret-distribution-operator-webhook
+  namespace: secret-distribution-operator
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    app.kubernetes.io/name: secret-distribution-operator

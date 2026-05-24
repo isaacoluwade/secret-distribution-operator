@@ -1,0 +1,6 @@
+# cert-manager Issuer + Certificate that provision the TLS material the
+# webhook server presents to the apiserver. cert-manager injects the CA
+# bundle into the ValidatingWebhookConfiguration via the
+# cert-manager.io/inject-ca-from annotation applied in config/default/.
+resources:
+  - certificate.yaml

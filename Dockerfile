@@ -18,6 +18,18 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
 
 # Runtime stage
 FROM gcr.io/distroless/static-debian12:nonroot
+
+# OCI image labels. goreleaser overrides these with the real values at
+# release time via --label flags; the defaults here keep hand-built
+# images discoverable.
+ARG VERSION=dev
+ARG REVISION=unknown
+LABEL org.opencontainers.image.source="https://github.com/example/secret-distribution-operator" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="secret-distribution-operator" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 WORKDIR /
 COPY --from=builder /workspace/manager /manager
 USER 65532:65532

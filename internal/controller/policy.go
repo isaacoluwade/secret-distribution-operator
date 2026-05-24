@@ -1,43 +1,37 @@
 // Package controller holds the ExportSecret and ImportSecret reconcilers
 // plus the platform path-policy enforcement shared between them.
+//
+// The platform path *regex* and the low-level parse helpers
+// (ParsedPath / ParsePlatformPath / SecretNameFromArn) now live in
+// github.com/example/secret-distribution-operator/api/v1alpha1 so that the
+// ValidatingAdmissionWebhooks defined in that package can share a single
+// source of truth with the controller. The PolicyCheck* functions below
+// are the controller-facing entry points; they layer the namespace-match
+// (cross-tenant) check on top of the api package's parsers.
 package controller
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
+
+	secretsv1alpha1 "github.com/example/secret-distribution-operator/api/v1alpha1"
 )
 
-// PlatformPathPattern is the allowed shape of every secret path the operator
-// is willing to touch. The components are:
-//
-//	platform / <env> / <namespace> / <secret-name>
-//
-// Where env is one of dev|staging|prod|prod-dr and both the namespace and
-// secret-name slugs follow Kubernetes name rules (lower-case alnum + hyphen).
-var PlatformPathPattern = regexp.MustCompile(`^platform/(dev|staging|prod|prod-dr)/([a-z0-9-]+)/([a-z0-9-]+)$`)
+// PlatformPathPattern is re-exported here so existing controller tests and
+// any external consumers that referenced controller.PlatformPathPattern keep
+// compiling. The variable itself is owned by api/v1alpha1.
+var PlatformPathPattern = secretsv1alpha1.PlatformPathPattern
 
-// ParsedPath is the structured form of a path that matched
-// PlatformPathPattern. The fields correspond positionally to the regex's
-// capture groups.
-type ParsedPath struct {
-	Env        string
-	Namespace  string
-	SecretName string
+// ParsedPath aliases the api-package type for the same reason as above.
+type ParsedPath = secretsv1alpha1.ParsedPath
+
+// ParsePlatformPath delegates to api/v1alpha1.ParsePlatformPath.
+func ParsePlatformPath(path string) (ParsedPath, error) {
+	return secretsv1alpha1.ParsePlatformPath(path)
 }
 
-// ParsePlatformPath validates path against PlatformPathPattern and returns
-// the parsed components. Returns an error suitable for surfacing into a
-// PolicyDenied status condition.
-func ParsePlatformPath(path string) (ParsedPath, error) {
-	m := PlatformPathPattern.FindStringSubmatch(path)
-	if m == nil {
-		return ParsedPath{}, fmt.Errorf(
-			"path %q does not match required pattern platform/<env>/<namespace>/<secret-name> with env in [dev,staging,prod,prod-dr]",
-			path,
-		)
-	}
-	return ParsedPath{Env: m[1], Namespace: m[2], SecretName: m[3]}, nil
+// SecretNameFromArn delegates to api/v1alpha1.SecretNameFromArn.
+func SecretNameFromArn(arn string) (string, error) {
+	return secretsv1alpha1.SecretNameFromArn(arn)
 }
 
 // PolicyCheckExportPath enforces the platform path policy for ExportSecret.
@@ -56,30 +50,6 @@ func PolicyCheckExportPath(targetPath, crNamespace string) error {
 		)
 	}
 	return nil
-}
-
-// SecretNameFromArn extracts the secret-name portion of an AWS Secrets
-// Manager ARN. The Secrets Manager ARN format is:
-//
-//	arn:aws:secretsmanager:<region>:<account>:secret:<name>[-<suffix>]
-//
-// AWS appends a random 6-char suffix when creating secrets via the console;
-// our operator-managed secrets are created via the SDK with a clean name and
-// no suffix. This function returns the literal text following "secret:" with
-// no further trimming, so the caller is responsible for handling either
-// shape — we then run the result through PlatformPathPattern which will
-// reject the trailing "-XXXXXX" form if present.
-func SecretNameFromArn(arn string) (string, error) {
-	const sep = ":secret:"
-	idx := strings.Index(arn, sep)
-	if idx < 0 {
-		return "", fmt.Errorf("arn %q does not appear to be a Secrets Manager ARN (missing %q)", arn, sep)
-	}
-	name := arn[idx+len(sep):]
-	if name == "" {
-		return "", fmt.Errorf("arn %q has empty secret name", arn)
-	}
-	return name, nil
 }
 
 // PolicyCheckImportArn enforces the platform path policy on the secret-name

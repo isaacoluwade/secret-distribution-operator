@@ -1,3 +1,11 @@
+{{- /*
+This template hosts the metrics Service. The webhook Service is intentionally
+kept in templates/webhook.yaml so that disabling .Values.webhook.enabled
+cleanly removes everything webhook-related (Service + ValidatingWebhookConfig
++ Certificate) in one place, while metrics scraping remains independently
+toggleable. See webhook.yaml for the apiserver-facing endpoint on
+containerPort {{ .Values.webhook.port }}.
+*/ -}}
 {{- if .Values.metrics.enabled }}
 apiVersion: v1
 kind: Service

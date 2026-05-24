@@ -1,0 +1,40 @@
+{{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled -}}
+{{- if .Values.webhook.certManager.selfSigned }}
+# Self-signed Issuer scoped to the release namespace. The serving Certificate
+# below references it. Suitable for single-tenant clusters; for fleets,
+# disable selfSigned and point issuerRef at a cluster-wide CA Issuer.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "sdo.fullname" . }}-selfsigned
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sdo.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+# Serving certificate for the webhook. cert-manager writes tls.crt / tls.key
+# into the secret named in `secretName`; the deployment mounts that secret
+# at /tmp/k8s-webhook-server/serving-certs.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "sdo.fullname" . }}-serving-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sdo.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "sdo.fullname" . }}-webhook-cert
+  dnsNames:
+    - {{ include "sdo.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+    - {{ include "sdo.fullname" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    {{- if .Values.webhook.certManager.selfSigned }}
+    kind: Issuer
+    name: {{ include "sdo.fullname" . }}-selfsigned
+    {{- else }}
+    kind: {{ .Values.webhook.certManager.issuerRef.kind }}
+    name: {{ .Values.webhook.certManager.issuerRef.name }}
+    {{- end }}
+{{- end }}

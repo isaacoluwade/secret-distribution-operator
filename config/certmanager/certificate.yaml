@@ -1,0 +1,27 @@
+# Self-signed Issuer + Certificate pair. The Certificate's secretName matches
+# the volume mount in the manager deployment (/tmp/k8s-webhook-server/serving-certs).
+#
+# For production clusters that already run cert-manager with a cluster-wide
+# CA Issuer, replace `selfSigned` with an issuerRef pointing at it.
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: secret-distribution-operator-selfsigned
+  namespace: secret-distribution-operator
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: secret-distribution-operator-serving-cert
+  namespace: secret-distribution-operator
+spec:
+  secretName: secret-distribution-operator-webhook-cert
+  dnsNames:
+    - secret-distribution-operator-webhook.secret-distribution-operator.svc
+    - secret-distribution-operator-webhook.secret-distribution-operator.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: secret-distribution-operator-selfsigned
